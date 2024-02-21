@@ -6,7 +6,7 @@
 #define MAIN_SRC "./src/main.c"
 #define OUTPUT "./bin/main"
 
-#include "./wiz_build.h"
+#include<wiz_build.h>
 
 int main(int argc, char** argv)
 {
