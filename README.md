@@ -14,11 +14,13 @@ last time.
 - Incrementing the master stack
 - Cycle forwards through the stack
 <br>
+
 ## Missing features
 - Backwards cycling
 - Workspaces
 - Resizing
 - Status bar(if I feel like it)
+
 <br>
 
 ## Running
