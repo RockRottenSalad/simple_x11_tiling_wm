@@ -1,1 +1,1 @@
-exec ./bin/main
+exec ./bin/tile_wm

@@ -4,9 +4,9 @@
 #define DEBUG_FLAGS "-g", "-Wall", "-Wextra", "-lX11", "-I", "./lib/"
 
 #define MAIN_SRC "./src/main.c"
-#define OUTPUT "./bin/main"
+#define OUTPUT "./bin/tile_wm"
 
-#include<wiz_build.h>
+#include "./wiz_build.h"
 
 int main(int argc, char** argv)
 {
