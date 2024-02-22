@@ -12,11 +12,10 @@ last time.
 - Closing windows(except for the last window, which will cause a segfault due to missing NULL check)
 - Dynamically tile master window on left and slave windows on right
 - Incrementing the master stack
-- Cycle forwards through the stack
+- Cycle forwards/backwards through the stack
 <br>
 
 ## Missing features
-- Backwards cycling
 - Workspaces
 - Resizing
 - Status bar(if I feel like it)

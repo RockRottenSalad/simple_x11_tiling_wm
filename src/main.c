@@ -22,6 +22,7 @@ struct client_t
     bool fullscreen;
     
     struct client_t *next;
+    struct client_t *prev;
 };
 typedef struct client_t client_t;
 
@@ -35,7 +36,7 @@ typedef struct
     bool running;
 
     client_t *focus;
-    client_t *head;
+    client_t *head, *tail;
     int masters, clients;
 } wm_t;
 static wm_t wm;
@@ -138,6 +139,9 @@ void handle_map_request(XEvent *ev)
    new_client->frame = frame;
    wm.head = new_client;
    new_client->next = prev_head;
+   new_client->prev = NULL;
+   if(prev_head != NULL)
+       prev_head->prev = new_client;
    
    wm.clients++;
    wm.focus = wm.head; // New window automatically gains focus
@@ -173,12 +177,18 @@ void handle_destroy(XEvent *ev)
         client_t* new_head = client->next;
         free(client);
         wm.head = new_head;
+        if(new_head != NULL)
+            new_head->prev = NULL;
     }else{
         prev->next = client->next;
+        if(prev->next != NULL)
+            prev->next->prev = prev;
         free(client);
     }
+
     wm.focus = prev;
-    XSetInputFocus(wm.dpy, prev->window, RevertToPointerRoot, CurrentTime);
+    if(wm.focus != NULL) // If the destroyed window was the last window, then wm.focus will be NULL here
+        XSetInputFocus(wm.dpy, prev->window, RevertToPointerRoot, CurrentTime);
     wm.clients--;
     default_tiling_layout();
 }
@@ -224,6 +234,9 @@ void handle_key_press(XEvent *ev)
             break;
         case XK_j:
             focus_next();
+            break;
+        case XK_k:
+            focus_prev();
             break;
         case XK_i:
             update_masters(1); // Increase master window count by 1
@@ -336,8 +349,9 @@ void focus_next(void)
 // TODO
 void focus_prev(void)
 {
+    wm.focus = wm.focus->prev;
 
-//    XSetInputFocus(wm.dpy, wm.focus->window, RevertToPointerRoot, CurrentTime);
+    XSetInputFocus(wm.dpy, wm.focus->window, RevertToPointerRoot, CurrentTime);
 }
 
 // Increment or decrement the total amont of masters
@@ -394,6 +408,8 @@ client_t* client_from_window(Window window, client_t **ret_prev)
 void close_client(client_t *client)
 {
     LOG("Close client");
+    if(client == NULL)
+        return;
     XEvent event;
     event.xclient.type = ClientMessage;
     event.xclient.window = wm.head->frame;
@@ -402,7 +418,7 @@ void close_client(client_t *client)
     event.xclient.data.l[0] = XInternAtom(wm.dpy, "WM_DELETE_WINDOW", False);
     event.xclient.data.l[1] = CurrentTime;
     (void)event;
-    
+
     XDestroyWindow(wm.dpy, client->frame);
 
 //    XSendEvent(wm.dpy, wm.head->frame, False, NoEventMask, &event);
