@@ -9,17 +9,17 @@ last time.
 <br>
 ## Current features
 - Spawning windows
-- Closing windows(except for the last window, which will cause a segfault due to missing NULL check)
+- Closing windows(Not reliable, buggy, tends to crash)
 - Dynamically tile master window on left and slave windows on right
 - Incrementing the master stack
+- Resizing master stack
 - Cycle forwards/backwards through the stack
 <br>
 
 ## Missing features
 - Workspaces
-- Resizing
 - Status bar(if I feel like it)
-
+- Actually making this thing stable and not crash 
 <br>
 
 ## Running

@@ -19,12 +19,26 @@
 struct client_t
 {
     Window window, frame;
-    bool fullscreen;
+    bool fullscreen; // Window becomes fullscreen when this is set to true
     
-    struct client_t *next;
+    struct client_t *next; // Linked list
     struct client_t *prev;
 };
 typedef struct client_t client_t;
+
+typedef struct
+{
+    client_t *head, *tail; // Linked list
+
+    // Clients are the total amount of windows in the workspace
+    // Masters is the amount of masters(amount of windows on the left side)
+    int clients, masters; 
+
+    // master_weight = 0.5 means master window takes up 50% of the screen
+    // 0.75 means it takes up 75% etc
+    // Width is calculated by multiplying the screen width with master_weight
+    float master_weight;
+} workspace_t;
 
 // Window manager info
 // Important often needed variables
@@ -33,11 +47,17 @@ typedef struct
 {
     Display *dpy;
     Window root;
-    bool running;
+    bool running; // WM exits whe this becomes false
 
+//    workspace_t workspaces[10];
+    
+    // Keyboard inputs go to the focused client
     client_t *focus;
+
+    // NOTE: To be replaced with workspaces
     client_t *head, *tail;
     int masters, clients;
+    float master_weight;
 } wm_t;
 static wm_t wm;
 
@@ -186,9 +206,12 @@ void handle_destroy(XEvent *ev)
         free(client);
     }
 
-    wm.focus = prev;
+    if(prev != NULL)
+        wm.focus = prev;
+    else
+        wm.focus = wm.head;
     if(wm.focus != NULL) // If the destroyed window was the last window, then wm.focus will be NULL here
-        XSetInputFocus(wm.dpy, prev->window, RevertToPointerRoot, CurrentTime);
+        XSetInputFocus(wm.dpy, wm.focus->window, RevertToPointerRoot, CurrentTime);
     wm.clients--;
     default_tiling_layout();
 }
@@ -244,6 +267,14 @@ void handle_key_press(XEvent *ev)
         case XK_d:
             update_masters(-1);
             break;
+        case XK_h:
+            wm.master_weight -= 0.05f;
+            default_tiling_layout();
+            break;
+        case XK_l:
+            wm.master_weight += 0.05f;
+            default_tiling_layout();
+            break;
         case XK_x:
             wm.running = false;
             break;
@@ -271,6 +302,7 @@ int main(void)
     wm.head = NULL;
     wm.masters = 1;
     wm.clients = 0;
+    wm.master_weight = 0.5f;
     XFlush(wm.dpy);
 
     // WM needs to intercept all events coming to the X server from applications
@@ -304,22 +336,22 @@ void default_tiling_layout(void)
 {
     client_t* client = wm.head;
 
-    int master_width = 2;
+    float master_width = wm.master_weight;
     
     // If master is the only window or there are as many masters as there
     // are clients, then the master window(s) should take up the whole width
     // of the screen
     if(wm.clients == wm.masters)
-        master_width = 1;
+        master_width = 1.0f;
 
     for(int i = 0; i < wm.masters && client != NULL; i++)
     {
         XMoveResizeWindow(wm.dpy, client->frame,
                 0, (screen_height/wm.masters)*i,
-                screen_width/master_width, screen_height/wm.masters);
+                screen_width * master_width, screen_height/wm.masters);
         XMoveResizeWindow(wm.dpy, client->window,
                 0, 0, // Never move the window, only move the frame, learned that the hard way
-                screen_width/master_width, screen_height/wm.masters);
+                screen_width * master_width, screen_height/wm.masters);
         client = client->next;
     }
 
@@ -327,11 +359,11 @@ void default_tiling_layout(void)
     {
         // Height of each slave = screen height / total amount of slaves
         XMoveResizeWindow(wm.dpy, client->frame,
-                screen_width/2, (screen_height/(wm.clients-wm.masters))*i,
-                screen_width/2, screen_height/(wm.clients-wm.masters));
+                screen_width * wm.master_weight, (screen_height/(wm.clients-wm.masters))*i,
+                screen_width * (1.0f-wm.master_weight), screen_height/(wm.clients-wm.masters));
         XMoveResizeWindow(wm.dpy, client->window,
                 0, 0,
-                screen_width/2, screen_height/(wm.clients-wm.masters));
+                screen_width * (1.0f-wm.master_weight), screen_height/(wm.clients-wm.masters));
         client = client->next;
     }
 }
@@ -339,7 +371,9 @@ void default_tiling_layout(void)
 void focus_next(void)
 {
     // If at bottom of stack, go back to top
-    if(wm.focus->next == NULL)
+    if(wm.focus == NULL)
+        return;
+    else if(wm.focus->next == NULL)
         wm.focus = wm.head;
     else
         wm.focus = wm.focus->next;
@@ -349,6 +383,8 @@ void focus_next(void)
 // TODO
 void focus_prev(void)
 {
+    if(wm.focus == NULL)
+        return;
     wm.focus = wm.focus->prev;
 
     XSetInputFocus(wm.dpy, wm.focus->window, RevertToPointerRoot, CurrentTime);
